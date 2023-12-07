@@ -25,15 +25,25 @@ type Element = {
   name: string;
   price: number;
   url: string;
+  specs: Specs;
+  origin: string;
 };
 
 interface CardProps {
   element: Element;
 }
 
+type Specs = {
+  processor: string;
+  ram: string;
+  storage: string;
+  inches: string;
+};
+
 interface ChipOption {
   id: number;
   label: string;
+  value: string;
 }
 
 const Card: React.FC<CardProps> = ({ element }) => {
@@ -43,12 +53,12 @@ const Card: React.FC<CardProps> = ({ element }) => {
     window.open(element.url, "_blank", "noopener noreferrer");
   };
 
-  const getLogoImage = () => {
-    if (element.url.includes("fullh4rd")) {
+  const getLogoImage = (origin: string) => {
+    if (origin == "FullH4rd") {
       return FULLHARD;
-    } else if (element.url.includes("mercadolibre")) {
+    } else if (origin == "Mercado Libre") {
       return MERCADOLIBRE;
-    } else if (element.url.includes("fravega")) {
+    } else if (origin == "Fravega") {
       return FRAVEGA;
     }
     return NOTFOUND; // Default or fallback image
@@ -72,15 +82,30 @@ const Card: React.FC<CardProps> = ({ element }) => {
       <div>
         <span className="elementTitle">{element.name}</span>
         <br />
+        {element.specs.processor !== "" && (
+          <span className="specs">Processor: {element.specs.processor}</span>
+        )}
+        <br />
+        {element.specs.ram !== "" && (
+          <span className="specs">RAM: {element.specs.ram}</span>
+        )}
+        <br />
+        {element.specs.storage !== "" && (
+          <span className="specs">Storage: {element.specs.storage}</span>
+        )}
+        <br />
+        {element.specs.inches !== "" && (
+          <span className="specs">Screen Size: {element.specs.inches}</span>
+        )}
         <br />
         <span className="elementPrice">
           Precio: ${element.price.toLocaleString()}
         </span>
       </div>
       <img
-        src={getLogoImage()}
+        src={getLogoImage(element.origin)}
         alt="Logo"
-        style={{ width: "50px", height: "50px" }}
+        style={{ width: "120px", height: "120px" }}
       />
     </div>
   );
@@ -89,45 +114,59 @@ const Card: React.FC<CardProps> = ({ element }) => {
 export default function Homepage() {
   const handleSubmit = async () => {
     // armar url
-    const url = `http://localhost:8080/api/general?ram=${ram}&inches=${screen}&storage=${storage}&minPrice=${minPrice}&maxPrice=${maxPrice}&sort=${sort}&limit=${amount}&processor=${processor}`;
+    setIsLoading(true);
+
+    const url_start = `http://localhost:8080/api/${selectedChipLabel}?`;
+    const url_specs = `minRam=${minRam}&maxRam=${maxRam}&minInches=${minScreen}&maxInches=${maxScreen}&minStorage=${minStorage}&maxStorage=${maxStorage}&processor=${processor}`;
+    const url_params = `&minPrice=${minPrice}&maxPrice=${maxPrice}&sort=asc&limit=${amount}`;
+    const url = url_start + url_specs + url_params;
     console.log(url);
 
     try {
       const data = await axios.get(url);
       console.log(data.data);
       setResults(data.data);
+      setIsLoading(false);
     } catch (e) {
+      setIsLoading(false);
+      alert("Error fetching data...");
       //
     }
   };
 
-  // TODO
   const [maxPrice, setMaxPrice] = useState("");
   const [minPrice, setMinPrice] = useState("");
+
+  const [minScreen, setMinScreen] = useState("");
+  const [maxScreen, setMaxScreen] = useState("");
+
+  const [minRam, setMinRam] = useState("");
+  const [maxRam, setMaxRam] = useState("");
+
+  const [minStorage, setMinStorage] = useState("");
+  const [maxStorage, setMaxStorage] = useState("");
+
   const [amount, setAmount] = useState("");
   const [sort, setSort] = useState("");
-  const [screen, setScreen] = useState("");
-  const [ram, setRam] = useState("");
-  const [storage, setStorage] = useState("");
   const [processor, setProcessor] = useState("");
 
   const [selectedChip, setSelectedChip] = useState<number>(1);
-  const [selectedChipLabel, setselectedChipLabel] = useState("") 
+  const [selectedChipLabel, setselectedChipLabel] = useState("general");
 
   const chipOptions: ChipOption[] = [
-    { id: 1, label: "All" },
-    { id: 2, label: "Mercadolibre" },
-    { id: 3, label: "Fravega" },
-    { id: 4, label: "FullH4rd" },
+    { id: 1, label: "All", value: "general" },
+    { id: 2, label: "Mercadolibre", value: "mercadolibre" },
+    { id: 3, label: "Fravega", value: "fravega" },
+    { id: 4, label: "FullH4rd", value: "fullh4rd" },
   ];
 
   const handleChipClick = (option: ChipOption) => {
     setSelectedChip(option.id);
-    setselectedChipLabel(option.label)
-    console.log(option.label)
+    setselectedChipLabel(option.value);
   };
 
   const [results, setResults] = useState<Element[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   return (
     <div className="container">
@@ -135,15 +174,6 @@ export default function Homepage() {
       <div className="inputs-container">
         {/* First Row */}
         <div className="input-row">
-          <div className="input-item">
-            <span className="label">Max Price (ARS)</span>
-            <TextField
-              variant="filled"
-              className="textfield"
-              onChange={(e) => setMaxPrice(e.target.value)}
-            />
-          </div>
-
           <div className="input-item">
             <span className="label">Min Price (ARS)</span>
             <TextField
@@ -154,11 +184,20 @@ export default function Homepage() {
           </div>
 
           <div className="input-item">
+            <span className="label">Max Price (ARS)</span>
+            <TextField
+              variant="filled"
+              className="textfield"
+              onChange={(e) => setMaxPrice(e.target.value)}
+            />
+          </div>
+
+          <div className="input-item">
             <span className="label">Min Screen Size (inches)</span>
             <TextField
               variant="filled"
               className="textfield"
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(e) => setMinScreen(e.target.value)}
             />
           </div>
 
@@ -167,7 +206,7 @@ export default function Homepage() {
             <TextField
               variant="filled"
               className="textfield"
-              onChange={(e) => setSort(e.target.value)}
+              onChange={(e) => setMaxScreen(e.target.value)}
             />
           </div>
         </div>
@@ -179,7 +218,7 @@ export default function Homepage() {
             <TextField
               variant="filled"
               className="textfield"
-              onChange={(e) => setRam(e.target.value)}
+              onChange={(e) => setMinRam(e.target.value)}
             />
           </div>
 
@@ -188,7 +227,7 @@ export default function Homepage() {
             <TextField
               variant="filled"
               className="textfield"
-              onChange={(e) => setScreen(e.target.value)}
+              onChange={(e) => setMaxRam(e.target.value)}
             />
           </div>
 
@@ -197,7 +236,7 @@ export default function Homepage() {
             <TextField
               variant="filled"
               className="textfield"
-              onChange={(e) => setStorage(e.target.value)}
+              onChange={(e) => setMinStorage(e.target.value)}
             />
           </div>
 
@@ -206,7 +245,7 @@ export default function Homepage() {
             <TextField
               variant="filled"
               className="textfield"
-              onChange={(e) => setProcessor(e.target.value)}
+              onChange={(e) => setMaxStorage(e.target.value)}
             />
           </div>
         </div>
@@ -217,17 +256,14 @@ export default function Homepage() {
             <TextField
               variant="filled"
               className="textfield"
-              onChange={(e) => setRam(e.target.value)}
+              onChange={(e) => setAmount(e.target.value)}
             />
           </div>
 
           <div className="input-item">
             <span className="label">Sort</span>
             <FormControl fullWidth>
-              <Select
-                value={processor}
-                onChange={(e) => setSort(e.target.value)}
-              >
+              <Select value={sort} onChange={(e) => setSort(e.target.value)}>
                 <MenuItem value={""}>Any</MenuItem>
                 <MenuItem value={"asc"}>Ascending</MenuItem>
                 <MenuItem value={"desc"}>Descending</MenuItem>
@@ -250,7 +286,7 @@ export default function Homepage() {
             </FormControl>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', marginTop:'21px'}}>
+          <div style={{ display: "flex", gap: "8px", marginTop: "21px" }}>
             {chipOptions.map((option) => (
               <Chip
                 key={option.id}
@@ -277,22 +313,30 @@ export default function Homepage() {
         </Button>
       </div>
 
-      {results && results.length ? (
-        <div>
-          <div
-            style={{
-              overflowY: "scroll",
-              maxHeight: "450px",
-            }}
-          >
-            {results.map((element, index) => (
-              <Card key={index} element={element} />
-            ))}
-          </div>
-        </div>
-      ) : (
+      {isLoading ? (
         <div style={{ marginTop: 50 }}>
           <CircularProgress />
+        </div>
+      ) : (
+        <div>
+          {results && results.length ? (
+            <div>
+              <div
+                style={{
+                  overflowY: "scroll",
+                  maxHeight: "450px",
+                }}
+              >
+                {results.map((element, index) => (
+                  <Card key={index} element={element} />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div>
+              <h2 className="subtitle">The results will be displayed here</h2>
+            </div>
+          )}
         </div>
       )}
     </div>
